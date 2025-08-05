@@ -1,0 +1,37 @@
+services:
+  # This service emulates a serial port that both other services can connect to.
+  # It listens on a TCP port and links it to a virtual PTY device.
+  socat_service:
+    image: alpine/socat
+    command: TCP-LISTEN:54321,reuseaddr,fork PTY,link=/dev/virtual_port,raw,echo=0,waitslave
+    networks:
+      - sensor-net
+
+  # The emulator application service
+  emulator:
+    build: .
+    # The command to run inside the container.
+    # It connects to the virtual port created by socat.
+    command: ./emulator --port-path /dev/virtual_port --log-level trace
+    depends_on:
+      - socat_service
+    networks:
+      - sensor-net
+
+  # The consumer application service
+  consumer:
+    build: .
+    # The command to run inside the container.
+    command: ./consumer --port-path /dev/virtual_port --log-level trace --enable-http
+    depends_on:
+      - socat_service
+    networks:
+      - sensor-net
+    ports:
+      # Expose the consumer's HTTP server (port 5001) to the host machine.
+      - "5001:5001"
+
+networks:
+  sensor-net:
+    driver: bridge
+

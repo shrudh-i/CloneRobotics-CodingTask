@@ -4,11 +4,23 @@ project(RoboticsSensorApp CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# --- Installation ---
+# Define the output directory for the compiled binaries.
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
 # --- Submodule Dependencies ---
 # spdlog: For high-performance, configurable logging.
 add_subdirectory(libs/spdlog)
 # CLI11: For robust command-line argument parsing.
 add_subdirectory(libs/CLI11)
+# serial: For cross-platform serial port communication.
+add_library(serial STATIC
+    libs/serial/src/serial.cc
+    libs/serial/src/impl/unix.cc
+)
+target_include_directories(serial PUBLIC libs/serial/include)
+# The serial library requires linking against the real-time library (-lrt) on Linux.
+target_link_libraries(serial PUBLIC rt)
 
 # --- Submodule Dependencies: INTERFACE library ---
 # httplib.h: A simple, single-header HTTP server/client library.
@@ -23,9 +35,9 @@ target_include_directories(nlohmann_json INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/l
 add_library(Eigen INTERFACE)
 target_include_directories(Eigen INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/libs/eigen)
 
-# Serial: For cross-platform serial port communication.
-add_library(serial STATIC libs/serial/src/serial.cc)
-target_include_directories(serial PUBLIC libs/serial/include)
+# # Serial: For cross-platform serial port communication.
+# add_library(serial STATIC libs/serial/src/serial.cc)
+# target_include_directories(serial PUBLIC libs/serial/include)
 
 # --- COMMON Library ---
 add_library(common INTERFACE)
@@ -34,12 +46,8 @@ target_include_directories(common INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/src/comm
 # --- Executable Targets ---
 # Emulator Application
 add_executable(emulator src/emulator/main.cpp)
-target_link_libraries(emulator PRIVATE common spdlog CLI11::CLI11 serial)
+target_link_libraries(emulator PRIVATE common spdlog::spdlog CLI11::CLI11 serial)
 
 # Consumer Application
 add_executable(consumer src/consumer/main.cpp)
-target_link_libraries(consumer PRIVATE common spdlog CLI11::CLI11 serial httplib nlohmann_json Eigen)
-
-# --- Installation ---
-# Define the output directory for the compiled binaries.
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+target_link_libraries(consumer PRIVATE common spdlog::spdlog CLI11::CLI11 serial httplib nlohmann_json Eigen)
